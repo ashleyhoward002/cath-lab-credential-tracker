@@ -1,0 +1,15 @@
+{
+  "name": "cath-lab-credential-tracker",
+  "version": "1.0.0",
+  "description": "Staff credential and license tracking for cath lab",
+  "scripts": {
+    "start": "node server/server.js",
+    "build": "cd client && npm install && npm run build",
+    "install-all": "cd server && npm install && cd ../client && npm install",
+    "dev": "cd server && npm run dev",
+    "postinstall": "cd server && npm install && cd ../client && npm install && npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
