@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http:
 
 export default function StaffDetail() {
   const { id } = useParams();
-  const { isCoordinator } = useAuth();
+  const { canEditStaff } = useAuth();
   const [staff, setStaff] = useState(null);
   const [credentials, setCredentials] = useState([]);
   const [credentialTypes, setCredentialTypes] = useState([]);
@@ -233,7 +233,7 @@ export default function StaffDetail() {
             {staff.first_name} {staff.last_name}
           </h2>
         </div>
-        {isCoordinator && (
+        {canEditStaff && (
           <Link
             to={`/staff/${id}/edit`}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
@@ -280,7 +280,7 @@ export default function StaffDetail() {
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-semibold">Credentials</h3>
-          {isCoordinator && (
+          {canEditStaff && (
             <button
               onClick={() => setShowAssignModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
@@ -376,7 +376,7 @@ export default function StaffDetail() {
                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(instance.status)}`}>
                                   {instance.status}
                                 </span>
-                                {isCoordinator && (
+                                {canEditStaff && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); openEditModal(instance); }}
                                     className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
@@ -391,7 +391,7 @@ export default function StaffDetail() {
                             <div className="mt-3 pt-3 border-t border-gray-200">
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-sm font-medium text-gray-700">Attached Documents</p>
-                                {isCoordinator && (
+                                {canEditStaff && (
                                   <label className="cursor-pointer">
                                     <span className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center">
                                       {uploadingDocument && uploadCredentialId === instance.id ? (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useConfig } from '../context/ConfigContext';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -8,6 +9,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { demoMode } = useConfig();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -16,8 +18,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(username, password);
-      navigate('/dashboard');
+      const userData = await login(username, password);
+      if (userData.role === 'staff') {
+        navigate('/my-credentials');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -28,6 +34,12 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+        {demoMode && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg mb-6 text-center text-sm">
+            Demo Mode
+          </div>
+        )}
+
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Cath Lab Credential Tracker
@@ -80,11 +92,13 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p className="font-medium mb-2">Demo Accounts:</p>
-          <p>Coordinator: <span className="font-mono bg-gray-100 px-2 py-1 rounded">coordinator / demo123</span></p>
-          <p>Manager: <span className="font-mono bg-gray-100 px-2 py-1 rounded">manager / demo123</span></p>
-        </div>
+        {demoMode && (
+          <div className="mt-6 text-center text-sm text-gray-600">
+            <p className="font-medium mb-2">Demo Accounts:</p>
+            <p>Coordinator: <span className="font-mono bg-gray-100 px-2 py-1 rounded">coordinator / demo123</span></p>
+            <p>Manager: <span className="font-mono bg-gray-100 px-2 py-1 rounded">manager / demo123</span></p>
+          </div>
+        )}
       </div>
     </div>
   );

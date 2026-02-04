@@ -1,45 +1,40 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
+const config = require('./config');
 
-const DB_DIR = path.join(__dirname, '..', 'database');
-const DB_PATH = path.join(DB_DIR, 'credentials.db');
-
-// Ensure database directory exists
-fs.mkdirSync(DB_DIR, { recursive: true });
-
-// Create database connection
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('Error opening database', err);
-  } else {
-    console.log('Connected to SQLite database');
-    initializeDatabase();
-  }
+const pool = new Pool({
+  connectionString: config.databaseUrl,
+  ssl: config.isProduction ? { rejectUnauthorized: false } : false,
 });
 
-// Initialize database schema
-function initializeDatabase() {
-  db.serialize(() => {
-    // Users table for authentication
-    db.run(`
+pool.on('error', (err) => {
+  console.error('Unexpected database pool error:', err);
+});
+
+async function initializeDatabase() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         display_name TEXT NOT NULL,
         title TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('coordinator', 'manager', 'staff')),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        email TEXT,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        staff_member_id INTEGER,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Staff members table
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS staff_members (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         employee_id TEXT UNIQUE NOT NULL,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
@@ -55,128 +50,135 @@ function initializeDatabase() {
         home_state TEXT,
         status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Inactive', 'Archived')),
         notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Credential types (configurable templates)
-    db.run(`
+    // Add foreign key to users after staff_members exists
+    await client.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_name = 'fk_users_staff_member'
+        ) THEN
+          ALTER TABLE users ADD CONSTRAINT fk_users_staff_member
+            FOREIGN KEY (staff_member_id) REFERENCES staff_members(id) ON DELETE SET NULL;
+        END IF;
+      END $$
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS credential_types (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT UNIQUE NOT NULL,
         category TEXT NOT NULL CHECK(category IN ('License', 'Certification', 'Competency', 'CEU', 'Other')),
         issuing_body TEXT,
         renewal_period_months INTEGER,
         ceu_requirement INTEGER DEFAULT 0,
         required_for TEXT NOT NULL DEFAULT 'All',
-        is_required BOOLEAN NOT NULL DEFAULT 1,
+        is_required BOOLEAN NOT NULL DEFAULT true,
         alert_days TEXT DEFAULT '90,60,30,14,7',
-        verification_required BOOLEAN DEFAULT 1,
-        allow_multiple BOOLEAN DEFAULT 0,
+        verification_required BOOLEAN DEFAULT true,
+        allow_multiple BOOLEAN DEFAULT false,
         instructions TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Staff credentials (assigned credentials)
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS staff_credentials (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        staff_id INTEGER NOT NULL,
-        credential_type_id INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY,
+        staff_id INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE CASCADE,
+        credential_type_id INTEGER NOT NULL REFERENCES credential_types(id),
         issue_date DATE,
         expiration_date DATE,
         status TEXT NOT NULL DEFAULT 'Pending' CHECK(status IN ('Active', 'Expiring Soon', 'Expired', 'Pending', 'Waived', 'N/A')),
         waived_reason TEXT,
         waived_until DATE,
-        verified_by INTEGER,
+        verified_by INTEGER REFERENCES users(id),
         verified_date DATE,
         notes TEXT,
-        superseded BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (staff_id) REFERENCES staff_members(id) ON DELETE CASCADE,
-        FOREIGN KEY (credential_type_id) REFERENCES credential_types(id),
-        FOREIGN KEY (verified_by) REFERENCES users(id)
+        superseded BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Documents table
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS documents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        staff_credential_id INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY,
+        staff_credential_id INTEGER NOT NULL REFERENCES staff_credentials(id) ON DELETE CASCADE,
         file_name TEXT NOT NULL,
         file_path TEXT NOT NULL,
         file_size INTEGER,
         file_type TEXT,
-        uploaded_by INTEGER,
-        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (staff_credential_id) REFERENCES staff_credentials(id) ON DELETE CASCADE,
-        FOREIGN KEY (uploaded_by) REFERENCES users(id)
+        uploaded_by INTEGER REFERENCES users(id),
+        uploaded_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // CEU tracking table
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS ceu_entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        staff_id INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY,
+        staff_id INTEGER NOT NULL REFERENCES staff_members(id) ON DELETE CASCADE,
         date_completed DATE NOT NULL,
         course_title TEXT NOT NULL,
         provider TEXT,
         hours REAL NOT NULL,
         category TEXT,
         applies_to TEXT,
-        verified BOOLEAN DEFAULT 0,
-        verified_by INTEGER,
+        verified BOOLEAN DEFAULT false,
+        verified_by INTEGER REFERENCES users(id),
         verified_date DATE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (staff_id) REFERENCES staff_members(id) ON DELETE CASCADE,
-        FOREIGN KEY (verified_by) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Audit log table
-    db.run(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS audit_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
         action TEXT NOT NULL,
         table_name TEXT NOT NULL,
         record_id INTEGER,
         old_value TEXT,
         new_value TEXT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        timestamp TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Create default users
-    createDefaultUsers();
-  });
+    await client.query('COMMIT');
+    console.log('Database schema initialized');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
-// Create default coordinator and manager accounts
 async function createDefaultUsers() {
-  const coordinatorPassword = await bcrypt.hash('demo123', 10);
-  const managerPassword = await bcrypt.hash('demo123', 10);
+  const { rows } = await pool.query('SELECT COUNT(*) as count FROM users');
+  if (parseInt(rows[0].count) > 0) return;
 
-  db.run(`
-    INSERT OR IGNORE INTO users (username, password_hash, display_name, title, role)
-    VALUES ('coordinator', ?, 'Education Coordinator', 'Education Coordinator', 'coordinator')
-  `, [coordinatorPassword]);
+  const coordinatorHash = await bcrypt.hash('demo123', 10);
+  const managerHash = await bcrypt.hash('demo123', 10);
 
-  db.run(`
-    INSERT OR IGNORE INTO users (username, password_hash, display_name, title, role)
-    VALUES ('manager', ?, 'Department Manager', 'Department Manager', 'manager')
-  `, [managerPassword], (err) => {
-    if (!err) {
-      console.log('Default users created');
-    }
-  });
+  await pool.query(
+    `INSERT INTO users (username, password_hash, display_name, title, role)
+     VALUES ($1, $2, $3, $4, $5) ON CONFLICT (username) DO NOTHING`,
+    ['coordinator', coordinatorHash, 'Education Coordinator', 'Education Coordinator', 'coordinator']
+  );
+
+  await pool.query(
+    `INSERT INTO users (username, password_hash, display_name, title, role)
+     VALUES ($1, $2, $3, $4, $5) ON CONFLICT (username) DO NOTHING`,
+    ['manager', managerHash, 'Department Manager', 'Department Manager', 'manager']
+  );
+
+  console.log('Default demo users created');
 }
 
-module.exports = db;
+module.exports = { pool, initializeDatabase, createDefaultUsers };
