@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Use public URL for demo sharing, localhost for local development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// In production (served by Express), use relative /api path
+// In development (Vite dev server on :5173), point to Express on :3001
+const API_BASE_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.MODE === 'development' ? 'http://localhost:3001/api' : '/api');
 
 // Create axios instance with default config
 const api = axios.create({

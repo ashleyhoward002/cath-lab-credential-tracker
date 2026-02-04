@@ -1,8 +1,13 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcrypt');
 
-const DB_PATH = path.join(__dirname, '..', 'database', 'credentials.db');
+const DB_DIR = path.join(__dirname, '..', 'database');
+const DB_PATH = path.join(DB_DIR, 'credentials.db');
+
+// Ensure database directory exists
+fs.mkdirSync(DB_DIR, { recursive: true });
 
 // Create database connection
 const db = new sqlite3.Database(DB_PATH, (err) => {

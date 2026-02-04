@@ -15,6 +15,11 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Trust Railway's reverse proxy (required for secure cookies over HTTPS)
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
 // CORS configuration - allow same origin in production, localhost in dev
 app.use(cors({
   origin: function(origin, callback) {
@@ -530,10 +535,11 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
 
   // Handle client-side routing - serve index.html for all non-API routes
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+  app.get('{*path}', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
     }
+    res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
   });
 }
 
@@ -545,8 +551,9 @@ db.get("SELECT COUNT(*) as count FROM credential_types", async (err, row) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n✓ Server running on http://localhost:${PORT}`);
+const HOST = isProduction ? '0.0.0.0' : 'localhost';
+app.listen(PORT, HOST, () => {
+  console.log(`\n✓ Server running on http://${HOST}:${PORT}`);
   console.log(`✓ Database: ${path.join(__dirname, '..', 'database', 'credentials.db')}`);
   console.log(`\nDefault credentials:`);
   console.log(`  Coordinator: coordinator / demo123`);
