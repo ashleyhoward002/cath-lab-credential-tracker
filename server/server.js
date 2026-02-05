@@ -85,8 +85,17 @@ if (config.isProduction) {
 
 // Start server
 async function startServer() {
+  console.log('Starting server...');
+  console.log('  PORT:', config.port);
+  console.log('  NODE_ENV:', process.env.NODE_ENV);
+  console.log('  DEMO_MODE:', config.isDemoMode);
+  console.log('  DATABASE_URL:', config.databaseUrl ? '***set***' : 'MISSING');
+  console.log('  SESSION_SECRET:', config.sessionSecret ? '***set***' : 'MISSING');
+
   try {
+    console.log('Connecting to database...');
     await initializeDatabase();
+    console.log('Database initialized successfully.');
 
     if (config.isDemoMode) {
       await createDefaultUsers();
