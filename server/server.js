@@ -48,6 +48,11 @@ app.use(session({
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+// Health check (no auth, returns 200 when server is running)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Public config endpoint (no auth required)
 app.get('/api/config', (req, res) => {
   res.json({ demoMode: config.isDemoMode, version: '1.0.0' });
