@@ -70,6 +70,11 @@ router.post('/', requireCoordinator, async (req, res) => {
       agency_contact, home_state, status, notes
     } = req.body;
 
+    // Convert empty date strings to null for PostgreSQL
+    const hireDateValue = hire_date || null;
+    const contractStartValue = contract_start_date || null;
+    const contractEndValue = contract_end_date || null;
+
     const { rows } = await pool.query(
       `INSERT INTO staff_members
        (employee_id, first_name, last_name, email, phone, role, employment_type,
@@ -78,7 +83,7 @@ router.post('/', requireCoordinator, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id`,
       [employee_id, first_name, last_name, email, phone, role, employment_type,
-       hire_date, contract_start_date, contract_end_date, agency_name,
+       hireDateValue, contractStartValue, contractEndValue, agency_name,
        agency_contact, home_state, status || 'Active', notes]
     );
 
@@ -93,7 +98,11 @@ router.post('/', requireCoordinator, async (req, res) => {
 // Update staff member
 router.put('/:id', requireManager, async (req, res) => {
   try {
-    const updates = req.body;
+    const updates = { ...req.body };
+    // Convert empty date strings to null for PostgreSQL
+    ['hire_date', 'contract_start_date', 'contract_end_date'].forEach(field => {
+      if (updates[field] === '') updates[field] = null;
+    });
     const keys = Object.keys(updates);
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     const values = [...Object.values(updates), req.params.id];
