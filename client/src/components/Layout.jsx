@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useConfig } from '../context/ConfigContext';
+import WelcomeModal from './WelcomeModal';
 
 export default function Layout({ children }) {
   const { user, logout, isCoordinator, isStaff } = useAuth();
@@ -20,12 +21,15 @@ export default function Layout({ children }) {
     { name: 'Reports', path: '/reports', icon: '📈', roles: ['coordinator', 'manager'] },
     { name: 'Credential Types', path: '/credential-types', icon: '📋', roles: ['coordinator'] },
     { name: 'Users', path: '/users', icon: '🔑', roles: ['coordinator'] },
+    { name: 'Help', path: '/help', icon: '❓', roles: ['coordinator', 'manager', 'staff'] },
   ];
 
   const isActive = (path) => location.pathname === path;
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <WelcomeModal />
+
       {/* Demo Banner */}
       {demoMode && (
         <div className="bg-amber-400 text-amber-900 text-center py-1 text-sm font-medium">

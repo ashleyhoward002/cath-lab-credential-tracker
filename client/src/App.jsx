@@ -15,6 +15,7 @@ import Reports from './pages/Reports';
 import UserManagement from './pages/UserManagement';
 import MyCredentials from './pages/MyCredentials';
 import ChangePassword from './pages/ChangePassword';
+import Help from './pages/Help';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -126,6 +127,11 @@ function AppRoutes() {
       <Route path="/change-password" element={
         <ProtectedRoute>
           <ChangePassword />
+        </ProtectedRoute>
+      } />
+      <Route path="/help" element={
+        <ProtectedRoute>
+          <Help />
         </ProtectedRoute>
       } />
 
