@@ -86,7 +86,7 @@ router.post('/', requireCoordinator, async (req, res) => {
     res.status(201).json({ id: rows[0].id });
   } catch (err) {
     console.error('Create staff error:', err);
-    res.status(500).json({ error: 'Failed to create staff member' });
+    res.status(500).json({ error: 'Failed to create staff member: ' + err.message });
   }
 });
 
