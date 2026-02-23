@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { staffAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import ExcelImportModal from '../components/ExcelImportModal';
 
 export default function Staff() {
   const [staff, setStaff] = useState([]);
@@ -9,6 +10,7 @@ export default function Staff() {
   const [filter, setFilter] = useState('Active');
   const [roleFilter, setRoleFilter] = useState('All');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('All');
+  const [showImportModal, setShowImportModal] = useState(false);
   const { isCoordinator } = useAuth();
 
   useEffect(() => {
@@ -66,12 +68,20 @@ export default function Staff() {
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-gray-900">Staff Members</h2>
         {isCoordinator && (
-          <Link
-            to="/staff/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-          >
-            + Add Staff Member
-          </Link>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+            >
+              Import from Excel
+            </button>
+            <Link
+              to="/staff/new"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              + Add Staff Member
+            </Link>
+          </div>
         )}
       </div>
 
@@ -231,6 +241,13 @@ export default function Staff() {
           </tbody>
         </table>
       </div>
+
+      {/* Excel Import Modal */}
+      <ExcelImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={loadStaff}
+      />
     </div>
   );
 }

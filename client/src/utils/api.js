@@ -48,6 +48,15 @@ export const staffAPI = {
     api.put(`/staff/${id}`, staffData),
   archive: (id) =>
     api.delete(`/staff/${id}`),
+  importPreview: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/staff/import/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  importConfirm: (staff) =>
+    api.post('/staff/import/confirm', { staff }),
 };
 
 // Credential Type API
