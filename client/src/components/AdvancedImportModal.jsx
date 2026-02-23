@@ -21,6 +21,8 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
   const [loading, setLoading] = useState(false);
   const [showCreateTypeModal, setShowCreateTypeModal] = useState(false);
   const [newTypeData, setNewTypeData] = useState({ name: '', category: 'Certification', isExpiring: true, forColumn: null });
+  const [editingStaffIndex, setEditingStaffIndex] = useState(null);
+  const [excludedStaff, setExcludedStaff] = useState(new Set());
 
   useEffect(() => {
     if (isOpen) {
@@ -108,7 +110,9 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
     setStep('importing');
     setError('');
     try {
-      const res = await importAPI.confirm(previewData.staff);
+      // Filter out excluded staff
+      const staffToImport = previewData.staff.filter((_, idx) => !excludedStaff.has(idx));
+      const res = await importAPI.confirm(staffToImport);
       setImportResults(res.data);
       setStep('done');
     } catch (err) {
@@ -117,6 +121,102 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
     } finally {
       setLoading(false);
     }
+  };
+
+  const updateStaffField = (index, field, value) => {
+    setPreviewData(prev => ({
+      ...prev,
+      staff: prev.staff.map((s, i) => {
+        if (i !== index) return s;
+        const updated = { ...s, [field]: value };
+        // Update fullName when name fields change
+        if (field === 'firstName' || field === 'lastName') {
+          updated.fullName = `${field === 'firstName' ? value : s.firstName} ${field === 'lastName' ? value : s.lastName}`.trim();
+        }
+        return updated;
+      })
+    }));
+  };
+
+  const updateCredentialDate = (staffIndex, credIndex, newDate) => {
+    setPreviewData(prev => ({
+      ...prev,
+      staff: prev.staff.map((s, i) => {
+        if (i !== staffIndex) return s;
+        return {
+          ...s,
+          credentials: s.credentials.map((c, ci) =>
+            ci === credIndex ? { ...c, expirationDate: newDate } : c
+          )
+        };
+      })
+    }));
+  };
+
+  const updateCompetencyDate = (staffIndex, compIndex, newDate) => {
+    setPreviewData(prev => ({
+      ...prev,
+      staff: prev.staff.map((s, i) => {
+        if (i !== staffIndex) return s;
+        return {
+          ...s,
+          competencies: s.competencies.map((c, ci) =>
+            ci === compIndex ? { ...c, completionDate: newDate } : c
+          )
+        };
+      })
+    }));
+  };
+
+  const removeCredential = (staffIndex, credIndex) => {
+    setPreviewData(prev => ({
+      ...prev,
+      staff: prev.staff.map((s, i) => {
+        if (i !== staffIndex) return s;
+        return {
+          ...s,
+          credentials: s.credentials.filter((_, ci) => ci !== credIndex)
+        };
+      }),
+      stats: {
+        ...prev.stats,
+        totalCredentials: prev.stats.totalCredentials - 1
+      }
+    }));
+  };
+
+  const removeCompetency = (staffIndex, compIndex) => {
+    setPreviewData(prev => ({
+      ...prev,
+      staff: prev.staff.map((s, i) => {
+        if (i !== staffIndex) return s;
+        return {
+          ...s,
+          competencies: s.competencies.filter((_, ci) => ci !== compIndex)
+        };
+      }),
+      stats: {
+        ...prev.stats,
+        totalCompetencies: prev.stats.totalCompetencies - 1
+      }
+    }));
+  };
+
+  const toggleExcludeStaff = (index) => {
+    setExcludedStaff(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const getCredentialTypeName = (id) => {
+    const ct = credentialTypes.find(c => c.id === id);
+    return ct?.name || 'Unknown';
   };
 
   const handleCreateCredentialType = async () => {
@@ -152,6 +252,8 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
     setImportResults(null);
     setMapping({ nameColumn: 0, contactColumn: 1, licenseNumColumn: null, credentials: {}, competencies: {} });
     setError('');
+    setEditingStaffIndex(null);
+    setExcludedStaff(new Set());
     onClose();
     if (importResults?.staffCreated > 0) {
       onImportComplete();
@@ -347,64 +449,216 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
               {/* Stats Summary */}
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600">{previewData.stats.totalStaff}</div>
-                  <div className="text-sm text-gray-600">Staff Members</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {previewData.stats.totalStaff - excludedStaff.size}
+                  </div>
+                  <div className="text-sm text-gray-600">Staff to Import</div>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-amber-600">{previewData.stats.totalCredentials}</div>
-                  <div className="text-sm text-gray-600">Credentials (Expiring)</div>
+                  <div className="text-sm text-gray-600">Credentials</div>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-green-600">{previewData.stats.totalCompetencies}</div>
-                  <div className="text-sm text-gray-600">Competencies (One-time)</div>
+                  <div className="text-sm text-gray-600">Competencies</div>
                 </div>
-                <div className="bg-red-50 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-red-600">{previewData.stats.parseErrors}</div>
-                  <div className="text-sm text-gray-600">Parse Warnings</div>
-                </div>
+                {excludedStaff.size > 0 && (
+                  <div className="bg-gray-100 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-gray-500">{excludedStaff.size}</div>
+                    <div className="text-sm text-gray-600">Excluded</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                Click on any row to edit staff details, credentials, and competencies before importing.
               </div>
 
               {/* Warnings */}
               {previewData.warnings.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <h3 className="font-medium text-yellow-900 mb-2">Parsing Warnings ({previewData.warnings.length})</h3>
-                  <div className="max-h-32 overflow-y-auto text-sm text-yellow-800 space-y-1">
-                    {previewData.warnings.slice(0, 10).map((w, i) => (
+                  <div className="max-h-24 overflow-y-auto text-sm text-yellow-800 space-y-1">
+                    {previewData.warnings.slice(0, 5).map((w, i) => (
                       <div key={i}>Row {w.row} ({w.name}): {w.warnings.join('; ')}</div>
                     ))}
-                    {previewData.warnings.length > 10 && (
-                      <div className="text-yellow-600">...and {previewData.warnings.length - 10} more</div>
+                    {previewData.warnings.length > 5 && (
+                      <div className="text-yellow-600">...and {previewData.warnings.length - 5} more</div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Staff Preview Table */}
-              <div className="border rounded-lg overflow-hidden">
-                <div className="max-h-72 overflow-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Credentials</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Competencies</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {previewData.staff.map((s, i) => (
-                        <tr key={i} className={s.warnings?.length > 0 ? 'bg-yellow-50' : ''}>
-                          <td className="px-4 py-2 text-sm font-medium text-gray-900">{s.fullName}</td>
-                          <td className="px-4 py-2 text-sm text-gray-500">{s.role}</td>
-                          <td className="px-4 py-2 text-sm text-gray-500">{s.contact || '-'}</td>
-                          <td className="px-4 py-2 text-sm text-gray-500">{s.credentials?.length || 0}</td>
-                          <td className="px-4 py-2 text-sm text-gray-500">{s.competencies?.length || 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {/* Editable Staff List */}
+              <div className="space-y-2">
+                {previewData.staff.map((s, i) => {
+                  const isExcluded = excludedStaff.has(i);
+                  const isEditing = editingStaffIndex === i;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`border rounded-lg overflow-hidden ${
+                        isExcluded ? 'opacity-50 bg-gray-100' :
+                        isEditing ? 'border-indigo-400 ring-2 ring-indigo-200' :
+                        s.warnings?.length > 0 ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200'
+                      }`}
+                    >
+                      {/* Staff Row Header */}
+                      <div
+                        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
+                        onClick={() => setEditingStaffIndex(isEditing ? null : i)}
+                      >
+                        <div className="flex items-center space-x-4">
+                          <input
+                            type="checkbox"
+                            checked={!isExcluded}
+                            onChange={(e) => { e.stopPropagation(); toggleExcludeStaff(i); }}
+                            className="h-4 w-4 text-indigo-600 rounded"
+                          />
+                          <div>
+                            <span className="font-medium text-gray-900">{s.fullName}</span>
+                            <span className="mx-2 text-gray-400">|</span>
+                            <span className="text-sm text-gray-500">{s.role}</span>
+                            {s.contact && (
+                              <>
+                                <span className="mx-2 text-gray-400">|</span>
+                                <span className="text-sm text-gray-500">{s.contact}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
+                            {s.credentials?.length || 0} creds
+                          </span>
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            {s.competencies?.length || 0} comps
+                          </span>
+                          <svg
+                            className={`w-5 h-5 text-gray-400 transition-transform ${isEditing ? 'rotate-180' : ''}`}
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Expanded Edit Panel */}
+                      {isEditing && !isExcluded && (
+                        <div className="border-t bg-gray-50 p-4 space-y-4">
+                          {/* Basic Info */}
+                          <div className="grid grid-cols-4 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">First Name</label>
+                              <input
+                                type="text"
+                                value={s.firstName}
+                                onChange={(e) => updateStaffField(i, 'firstName', e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Last Name</label>
+                              <input
+                                type="text"
+                                value={s.lastName}
+                                onChange={(e) => updateStaffField(i, 'lastName', e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+                              <select
+                                value={s.role}
+                                onChange={(e) => updateStaffField(i, 'role', e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              >
+                                <option value="RN">RN</option>
+                                <option value="Tech">Tech</option>
+                                <option value="RT">RT</option>
+                                <option value="EP Tech">EP Tech</option>
+                                <option value="Traveler">Traveler</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-1">Contact</label>
+                              <input
+                                type="text"
+                                value={s.contact || ''}
+                                onChange={(e) => updateStaffField(i, 'contact', e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Credentials */}
+                          {s.credentials?.length > 0 && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-2">
+                                Credentials (Expiring)
+                              </label>
+                              <div className="space-y-2">
+                                {s.credentials.map((cred, ci) => (
+                                  <div key={ci} className="flex items-center space-x-3 bg-white p-2 rounded border">
+                                    <span className="text-sm font-medium text-gray-700 w-32">
+                                      {getCredentialTypeName(cred.credentialTypeId)}
+                                    </span>
+                                    <span className="text-xs text-gray-500">Expires:</span>
+                                    <input
+                                      type="date"
+                                      value={cred.expirationDate || ''}
+                                      onChange={(e) => updateCredentialDate(i, ci, e.target.value)}
+                                      className="px-2 py-1 text-sm border border-gray-300 rounded"
+                                    />
+                                    <button
+                                      onClick={() => removeCredential(i, ci)}
+                                      className="text-red-500 hover:text-red-700 text-sm"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Competencies */}
+                          {s.competencies?.length > 0 && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500 mb-2">
+                                Competencies (One-time)
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {s.competencies.map((comp, ci) => (
+                                  <div key={ci} className="flex items-center space-x-2 bg-white p-2 rounded border">
+                                    <span className="text-sm text-gray-700 flex-1 truncate">
+                                      {getCredentialTypeName(comp.credentialTypeId)}
+                                    </span>
+                                    <input
+                                      type="date"
+                                      value={comp.completionDate || ''}
+                                      onChange={(e) => updateCompetencyDate(i, ci, e.target.value)}
+                                      className="px-2 py-1 text-xs border border-gray-300 rounded w-32"
+                                    />
+                                    <button
+                                      onClick={() => removeCompetency(i, ci)}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -458,7 +712,7 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
           <div className="text-sm text-gray-500">
             {step === 'upload' && file && `Selected: ${file.name}`}
             {step === 'mapping' && `${Object.keys(mapping.credentials).length + Object.keys(mapping.competencies).length} columns mapped`}
-            {step === 'preview' && `Ready to import ${previewData?.stats.totalStaff} staff members`}
+            {step === 'preview' && `Ready to import ${(previewData?.stats.totalStaff || 0) - excludedStaff.size} staff members`}
           </div>
           <div className="flex space-x-3">
             {step === 'upload' && (
@@ -487,13 +741,13 @@ export default function AdvancedImportModal({ isOpen, onClose, onImportComplete 
             )}
             {step === 'preview' && (
               <>
-                <button onClick={() => setStep('mapping')} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">Back</button>
+                <button onClick={() => { setStep('mapping'); setEditingStaffIndex(null); }} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">Back</button>
                 <button
                   onClick={handleImport}
-                  disabled={loading || previewData?.stats.totalStaff === 0}
+                  disabled={loading || (previewData?.stats.totalStaff || 0) - excludedStaff.size === 0}
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
                 >
-                  Import {previewData?.stats.totalStaff} Staff
+                  Import {(previewData?.stats.totalStaff || 0) - excludedStaff.size} Staff
                 </button>
               </>
             )}
