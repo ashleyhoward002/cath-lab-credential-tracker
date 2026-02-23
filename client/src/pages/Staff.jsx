@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { staffAPI } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import ExcelImportModal from '../components/ExcelImportModal';
+import AdvancedImportModal from '../components/AdvancedImportModal';
 
 export default function Staff() {
   const [staff, setStaff] = useState([]);
@@ -242,8 +242,8 @@ export default function Staff() {
         </table>
       </div>
 
-      {/* Excel Import Modal */}
-      <ExcelImportModal
+      {/* Advanced Excel Import Modal */}
+      <AdvancedImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImportComplete={loadStaff}

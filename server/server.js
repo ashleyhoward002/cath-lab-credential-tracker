@@ -67,6 +67,7 @@ app.use('/api/staff-credentials', require('./routes/credentials').credentialsRou
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/import', require('./routes/import'));
 
 // Backward-compatible alias: some frontend code uses /api/documents/upload
 // The documents router is mounted at /api/documents

@@ -111,4 +111,27 @@ export const usersAPI = {
   resetPassword: (id, newPassword) => api.post(`/users/${id}/reset-password`, { newPassword }),
 };
 
+// Advanced Import API (coordinator only)
+export const importAPI = {
+  analyze: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/import/analyze', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  preview: (file, mapping) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mapping', JSON.stringify(mapping));
+    return api.post('/import/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  createCredentialType: (data) =>
+    api.post('/import/credential-type', data),
+  confirm: (staff) =>
+    api.post('/import/confirm', { staff }),
+};
+
 export default api;
