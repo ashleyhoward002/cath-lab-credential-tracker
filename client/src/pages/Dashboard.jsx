@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { dashboardAPI } from '../utils/api';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [upcomingExpirations, setUpcomingExpirations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [daysFilter, setDaysFilter] = useState(90);
+  const [showExpiredOnly, setShowExpiredOnly] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -54,7 +56,10 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div
+          onClick={() => navigate('/staff')}
+          className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 border-transparent hover:border-blue-300"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Active Staff</p>
@@ -62,9 +67,13 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">👥</div>
           </div>
+          <p className="text-xs text-gray-400 mt-2">Click to view staff list</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div
+          onClick={() => { setShowExpiredOnly(true); setDaysFilter(90); }}
+          className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 ${showExpiredOnly ? 'border-red-400 ring-2 ring-red-200' : 'border-transparent hover:border-red-300'}`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Expired</p>
@@ -72,9 +81,13 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">🔴</div>
           </div>
+          <p className="text-xs text-gray-400 mt-2">Click to filter expired</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div
+          onClick={() => { setShowExpiredOnly(false); setDaysFilter(30); }}
+          className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 ${!showExpiredOnly && daysFilter === 30 ? 'border-amber-400 ring-2 ring-amber-200' : 'border-transparent hover:border-amber-300'}`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Expiring (30 days)</p>
@@ -82,9 +95,13 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">🟡</div>
           </div>
+          <p className="text-xs text-gray-400 mt-2">Click to filter</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div
+          onClick={() => { setShowExpiredOnly(false); setDaysFilter(90); }}
+          className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 ${!showExpiredOnly && daysFilter === 90 ? 'border-blue-400 ring-2 ring-blue-200' : 'border-transparent hover:border-blue-300'}`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Expiring (90 days)</p>
@@ -92,22 +109,37 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">📅</div>
           </div>
+          <p className="text-xs text-gray-400 mt-2">Click to filter</p>
         </div>
       </div>
 
       {/* Upcoming Expirations */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">Upcoming Expirations</h3>
-          <select
-            value={daysFilter}
-            onChange={(e) => setDaysFilter(Number(e.target.value))}
-            className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value={30}>Next 30 days</option>
-            <option value={60}>Next 60 days</option>
-            <option value={90}>Next 90 days</option>
-          </select>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {showExpiredOnly ? 'Expired Credentials' : 'Upcoming Expirations'}
+          </h3>
+          <div className="flex items-center space-x-3">
+            {showExpiredOnly && (
+              <button
+                onClick={() => setShowExpiredOnly(false)}
+                className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 underline"
+              >
+                Show all upcoming
+              </button>
+            )}
+            {!showExpiredOnly && (
+              <select
+                value={daysFilter}
+                onChange={(e) => setDaysFilter(Number(e.target.value))}
+                className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value={30}>Next 30 days</option>
+                <option value={60}>Next 60 days</option>
+                <option value={90}>Next 90 days</option>
+              </select>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -132,14 +164,24 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {upcomingExpirations.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                    No upcoming expirations in the next {daysFilter} days
-                  </td>
-                </tr>
-              ) : (
-                upcomingExpirations.map((item) => {
+              {(() => {
+                const filteredData = showExpiredOnly
+                  ? upcomingExpirations.filter(item => item.days_until_expiration < 0)
+                  : upcomingExpirations;
+
+                if (filteredData.length === 0) {
+                  return (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                        {showExpiredOnly
+                          ? 'No expired credentials found'
+                          : `No upcoming expirations in the next ${daysFilter} days`}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return filteredData.map((item) => {
                   const daysUntil = Math.floor(item.days_until_expiration);
                   return (
                     <tr key={item.id} className="hover:bg-gray-50">
@@ -176,8 +218,8 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   );
-                })
-              )}
+                });
+              })()}
             </tbody>
           </table>
         </div>
