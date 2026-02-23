@@ -144,10 +144,12 @@ export default function Dashboard() {
                   return (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {item.first_name} {item.last_name}
-                        </div>
-                        <div className="text-sm text-gray-500">{item.employee_id}</div>
+                        <Link to={`/staff/${item.staff_id}`} className="block hover:text-blue-600">
+                          <div className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                            {item.first_name} {item.last_name}
+                          </div>
+                          <div className="text-sm text-gray-500">{item.employee_id}</div>
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{item.credential_name}</div>

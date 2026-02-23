@@ -43,7 +43,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       username: user.username,
       displayName: user.display_name,
       title: user.title,
-      role: user.role,
+      role: user.role?.toLowerCase() || 'staff',
       staffMemberId: user.staff_member_id,
     });
   } catch (err) {
@@ -84,7 +84,7 @@ router.get('/session', async (req, res) => {
       username: user.username,
       displayName: user.display_name,
       title: user.title,
-      role: user.role,
+      role: user.role?.toLowerCase() || 'staff',
       staffMemberId: user.staff_member_id,
     });
   } catch (err) {
