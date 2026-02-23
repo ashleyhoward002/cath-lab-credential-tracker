@@ -1,7 +1,23 @@
 const express = require('express');
+const multer = require('multer');
+const XLSX = require('xlsx');
 const { pool } = require('../database');
 const { requireAuth, requireCoordinator, requireManager } = require('../middleware/auth');
 const { logAudit } = require('../helpers');
+
+// Memory storage for Excel file uploads (no need to persist)
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /xlsx|xls/;
+    const extname = allowedTypes.test(file.originalname.toLowerCase());
+    if (extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+  }
+});
 
 const router = express.Router();
 
@@ -181,6 +197,219 @@ router.post('/:staffId/credentials', requireManager, async (req, res) => {
   } catch (err) {
     console.error('Assign credential error:', err);
     res.status(500).json({ error: 'Failed to assign credential' });
+  }
+});
+
+// ===== EXCEL IMPORT =====
+
+// Parse uploaded Excel file and return preview data
+router.post('/import/preview', requireCoordinator, excelUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Parse the Excel file from buffer
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    // Convert to JSON with headers
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+    if (rawData.length === 0) {
+      return res.status(400).json({ error: 'Excel file is empty' });
+    }
+
+    // Expected column mappings (flexible - handles different header names)
+    const columnMappings = {
+      employee_id: ['employee_id', 'employee id', 'emp_id', 'emp id', 'id', 'employeeid'],
+      first_name: ['first_name', 'first name', 'firstname', 'first', 'fname'],
+      last_name: ['last_name', 'last name', 'lastname', 'last', 'lname'],
+      email: ['email', 'e-mail', 'email address'],
+      phone: ['phone', 'phone number', 'telephone', 'tel', 'mobile'],
+      role: ['role', 'position', 'job title', 'title'],
+      employment_type: ['employment_type', 'employment type', 'type', 'emp type', 'status'],
+      hire_date: ['hire_date', 'hire date', 'hiredate', 'start date', 'date hired'],
+      home_state: ['home_state', 'home state', 'state'],
+      notes: ['notes', 'note', 'comments', 'comment']
+    };
+
+    // Helper to find matching column in row
+    const findColumn = (row, possibleNames) => {
+      for (const name of possibleNames) {
+        const key = Object.keys(row).find(k => k.toLowerCase().trim() === name);
+        if (key !== undefined) return row[key];
+      }
+      return '';
+    };
+
+    // Get actual column headers from the Excel file
+    const excelHeaders = rawData.length > 0 ? Object.keys(rawData[0]) : [];
+
+    // Map and validate the data
+    const parsedStaff = rawData.map((row, index) => {
+      const staff = {
+        row_number: index + 2, // +2 because row 1 is headers, and we're 0-indexed
+        employee_id: String(findColumn(row, columnMappings.employee_id)).trim(),
+        first_name: String(findColumn(row, columnMappings.first_name)).trim(),
+        last_name: String(findColumn(row, columnMappings.last_name)).trim(),
+        email: String(findColumn(row, columnMappings.email)).trim(),
+        phone: String(findColumn(row, columnMappings.phone)).trim(),
+        role: String(findColumn(row, columnMappings.role)).trim(),
+        employment_type: String(findColumn(row, columnMappings.employment_type)).trim() || 'Permanent',
+        hire_date: findColumn(row, columnMappings.hire_date),
+        home_state: String(findColumn(row, columnMappings.home_state)).trim(),
+        notes: String(findColumn(row, columnMappings.notes)).trim(),
+        errors: [],
+        warnings: []
+      };
+
+      // Validate required fields
+      if (!staff.first_name) staff.errors.push('First name is required');
+      if (!staff.last_name) staff.errors.push('Last name is required');
+
+      // Validate role - provide suggestions
+      const validRoles = ['RN', 'Tech', 'RT', 'EP Tech'];
+      if (staff.role && !validRoles.includes(staff.role)) {
+        staff.warnings.push(`Role "${staff.role}" not recognized. Valid roles: ${validRoles.join(', ')}`);
+      }
+
+      // Validate employment type
+      const validTypes = ['Permanent', 'Traveler', 'PRN', 'Float'];
+      if (staff.employment_type && !validTypes.includes(staff.employment_type)) {
+        staff.warnings.push(`Employment type "${staff.employment_type}" not recognized. Valid types: ${validTypes.join(', ')}`);
+      }
+
+      // Parse date if present
+      if (staff.hire_date) {
+        const parsed = parseExcelDate(staff.hire_date);
+        if (parsed) {
+          staff.hire_date = parsed;
+        } else {
+          staff.warnings.push('Could not parse hire date');
+          staff.hire_date = '';
+        }
+      }
+
+      return staff;
+    });
+
+    // Check for duplicate employee IDs within the import
+    const employeeIds = parsedStaff.filter(s => s.employee_id).map(s => s.employee_id);
+    const duplicateIds = employeeIds.filter((id, index) => employeeIds.indexOf(id) !== index);
+    parsedStaff.forEach(staff => {
+      if (staff.employee_id && duplicateIds.includes(staff.employee_id)) {
+        staff.warnings.push('Duplicate employee ID in import');
+      }
+    });
+
+    // Check for existing employee IDs in database
+    const existingIds = await pool.query(
+      'SELECT employee_id FROM staff_members WHERE employee_id = ANY($1)',
+      [employeeIds.filter(id => id)]
+    );
+    const existingIdSet = new Set(existingIds.rows.map(r => r.employee_id));
+    parsedStaff.forEach(staff => {
+      if (staff.employee_id && existingIdSet.has(staff.employee_id)) {
+        staff.warnings.push('Employee ID already exists in system');
+      }
+    });
+
+    res.json({
+      total: parsedStaff.length,
+      valid: parsedStaff.filter(s => s.errors.length === 0).length,
+      withErrors: parsedStaff.filter(s => s.errors.length > 0).length,
+      withWarnings: parsedStaff.filter(s => s.warnings.length > 0 && s.errors.length === 0).length,
+      headers: excelHeaders,
+      staff: parsedStaff
+    });
+  } catch (err) {
+    console.error('Excel preview error:', err);
+    res.status(500).json({ error: 'Failed to parse Excel file: ' + err.message });
+  }
+});
+
+// Helper to parse Excel dates (can be number or string)
+function parseExcelDate(value) {
+  if (!value) return null;
+
+  // If it's an Excel serial number
+  if (typeof value === 'number') {
+    const date = XLSX.SSF.parse_date_code(value);
+    if (date) {
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+    }
+  }
+
+  // Try parsing as string date
+  const parsed = new Date(value);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().split('T')[0];
+  }
+
+  return null;
+}
+
+// Import staff members from validated data
+router.post('/import/confirm', requireCoordinator, async (req, res) => {
+  try {
+    const { staff } = req.body;
+
+    if (!staff || !Array.isArray(staff) || staff.length === 0) {
+      return res.status(400).json({ error: 'No staff data provided' });
+    }
+
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+
+    for (const member of staff) {
+      try {
+        // Skip rows with errors
+        if (member.errors && member.errors.length > 0) {
+          results.failed++;
+          results.errors.push({ row: member.row_number, error: member.errors.join(', ') });
+          continue;
+        }
+
+        const hireDateValue = member.hire_date || null;
+
+        const { rows } = await pool.query(
+          `INSERT INTO staff_members
+           (employee_id, first_name, last_name, email, phone, role, employment_type,
+            hire_date, home_state, status, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           RETURNING id`,
+          [
+            member.employee_id || null,
+            member.first_name,
+            member.last_name,
+            member.email || null,
+            member.phone || null,
+            member.role || null,
+            member.employment_type || 'Permanent',
+            hireDateValue,
+            member.home_state || null,
+            'Active',
+            member.notes || null
+          ]
+        );
+
+        logAudit(req.session.userId, 'CREATE', 'staff_members', rows[0].id, null, { ...member, source: 'excel_import' });
+        results.success++;
+      } catch (err) {
+        results.failed++;
+        results.errors.push({ row: member.row_number, error: err.message });
+      }
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error('Excel import error:', err);
+    res.status(500).json({ error: 'Failed to import staff: ' + err.message });
   }
 });
 

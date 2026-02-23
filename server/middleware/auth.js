@@ -6,8 +6,8 @@ const requireAuth = (req, res, next) => {
 };
 
 const requireCoordinator = (req, res, next) => {
-  if (!req.session.userId || req.session.userRole !== 'coordinator') {
-    return res.status(403).json({ error: 'Forbidden - Coordinator access required' });
+  if (!req.session.userId || !['coordinator', 'manager'].includes(req.session.userRole)) {
+    return res.status(403).json({ error: 'Forbidden - Coordinator or Manager access required' });
   }
   next();
 };

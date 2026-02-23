@@ -34,7 +34,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     req.session.userId = user.id;
     req.session.username = user.username;
-    req.session.userRole = user.role;
+    req.session.userRole = user.role?.toLowerCase() || 'staff';
     req.session.displayName = user.display_name;
     req.session.staffMemberId = user.staff_member_id;
 
