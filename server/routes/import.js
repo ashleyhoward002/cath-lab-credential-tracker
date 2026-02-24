@@ -486,11 +486,17 @@ router.post('/confirm', requireCoordinator, async (req, res) => {
             [member.contact, member.role, member.employmentType, staffId]
           );
         } else {
+          // Auto-generate employee_id for new staff
+          const initials = ((member.firstName || '').charAt(0) + (member.lastName || '').charAt(0)).toUpperCase();
+          const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+          const random = Math.random().toString(36).slice(2, 5).toUpperCase();
+          const employeeId = `${initials}${timestamp}${random}`;
+
           // Create new staff
           const insertResult = await client.query(
-            `INSERT INTO staff_members (first_name, last_name, phone, role, employment_type, status)
-             VALUES ($1, $2, $3, $4, $5, 'Active') RETURNING id`,
-            [member.firstName, member.lastName, member.contact || null, member.role, member.employmentType]
+            `INSERT INTO staff_members (employee_id, first_name, last_name, phone, role, employment_type, status)
+             VALUES ($1, $2, $3, $4, $5, $6, 'Active') RETURNING id`,
+            [employeeId, member.firstName, member.lastName, member.contact || null, member.role, member.employmentType]
           );
           staffId = insertResult.rows[0].id;
           results.staffCreated++;

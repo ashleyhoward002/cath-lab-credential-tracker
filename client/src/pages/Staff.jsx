@@ -11,6 +11,9 @@ export default function Staff() {
   const [roleFilter, setRoleFilter] = useState('All');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('All');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [archiveConfirm, setArchiveConfirm] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const { isCoordinator } = useAuth();
 
   useEffect(() => {
@@ -25,6 +28,32 @@ export default function Staff() {
       console.error('Error loading staff:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleArchive = async (member) => {
+    setActionLoading(true);
+    try {
+      await staffAPI.archive(member.id);
+      setArchiveConfirm(null);
+      loadStaff();
+    } catch (error) {
+      console.error('Error archiving staff:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async (member) => {
+    setActionLoading(true);
+    try {
+      await staffAPI.permanentDelete(member.id);
+      setDeleteConfirm(null);
+      loadStaff();
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -228,12 +257,30 @@ export default function Staff() {
                     <div>{member.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <Link
-                      to={`/staff/${member.id}`}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      View Details
-                    </Link>
+                    <div className="flex items-center space-x-3">
+                      <Link
+                        to={`/staff/${member.id}`}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        View
+                      </Link>
+                      {isCoordinator && member.status !== 'Archived' && (
+                        <button
+                          onClick={() => setArchiveConfirm(member)}
+                          className="text-amber-600 hover:text-amber-900"
+                        >
+                          Archive
+                        </button>
+                      )}
+                      {isCoordinator && (
+                        <button
+                          onClick={() => setDeleteConfirm(member)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -241,6 +288,65 @@ export default function Staff() {
           </tbody>
         </table>
       </div>
+
+      {/* Archive Confirmation Dialog */}
+      {archiveConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Archive Staff Member</h3>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to archive <strong>{archiveConfirm.first_name} {archiveConfirm.last_name}</strong>?
+              They will no longer appear in active staff lists or trigger credential expiration alerts.
+              This can be undone by editing their status back to Active.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setArchiveConfirm(null)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleArchive(archiveConfirm)}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium disabled:opacity-50"
+              >
+                {actionLoading ? 'Archiving...' : 'Archive'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Permanently Delete Staff Member</h3>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to permanently delete <strong>{deleteConfirm.first_name} {deleteConfirm.last_name}</strong>?
+            </p>
+            <p className="text-red-600 text-sm mb-4">
+              This action cannot be undone. All credentials, documents, and records for this staff member will be permanently removed.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handlePermanentDelete(deleteConfirm)}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50"
+              >
+                {actionLoading ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Advanced Excel Import Modal */}
       <AdvancedImportModal

@@ -48,6 +48,8 @@ export const staffAPI = {
     api.put(`/staff/${id}`, staffData),
   archive: (id) =>
     api.delete(`/staff/${id}`),
+  permanentDelete: (id) =>
+    api.delete(`/staff/${id}/permanent`),
   importPreview: (file) => {
     const formData = new FormData();
     formData.append('file', file);

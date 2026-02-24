@@ -155,6 +155,25 @@ router.delete('/:id', requireCoordinator, async (req, res) => {
   }
 });
 
+// Permanently delete staff member
+router.delete('/:id/permanent', requireCoordinator, async (req, res) => {
+  try {
+    const existing = await pool.query('SELECT * FROM staff_members WHERE id = $1', [req.params.id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    // CASCADE will handle staff_credentials, documents, and ceu_entries
+    await pool.query('DELETE FROM staff_members WHERE id = $1', [req.params.id]);
+
+    logAudit(req.session.userId, 'DELETE', 'staff_members', req.params.id, existing.rows[0], null);
+    res.json({ message: 'Staff member permanently deleted' });
+  } catch (err) {
+    console.error('Delete staff error:', err);
+    res.status(500).json({ error: 'Failed to delete staff member' });
+  }
+});
+
 // ===== STAFF CREDENTIALS (nested under /api/staff/:staffId/credentials) =====
 
 // Get credentials for a staff member
@@ -223,22 +242,31 @@ router.post('/import/preview', requireCoordinator, excelUpload.single('file'), a
 
     // Expected column mappings (flexible - handles different header names)
     const columnMappings = {
-      employee_id: ['employee_id', 'employee id', 'emp_id', 'emp id', 'id', 'employeeid'],
-      first_name: ['first_name', 'first name', 'firstname', 'first', 'fname'],
-      last_name: ['last_name', 'last name', 'lastname', 'last', 'lname'],
+      employee_id: ['employee_id', 'employee id', 'emp_id', 'emp id', 'id', 'employeeid', 'employee #', 'employee number', 'emp #'],
+      full_name: ['name', 'full name', 'full_name', 'fullname', 'staff name', 'employee name'],
+      first_name: ['first_name', 'first name', 'firstname', 'first', 'fname', 'given name'],
+      last_name: ['last_name', 'last name', 'lastname', 'last', 'lname', 'surname', 'family name'],
       email: ['email', 'e-mail', 'email address'],
-      phone: ['phone', 'phone number', 'telephone', 'tel', 'mobile'],
-      role: ['role', 'position', 'job title', 'title'],
-      employment_type: ['employment_type', 'employment type', 'type', 'emp type', 'status'],
-      hire_date: ['hire_date', 'hire date', 'hiredate', 'start date', 'date hired'],
-      home_state: ['home_state', 'home state', 'state'],
-      notes: ['notes', 'note', 'comments', 'comment']
+      phone: ['phone', 'phone number', 'telephone', 'tel', 'mobile', 'cell', 'contact', 'phone #'],
+      role: ['role', 'position', 'job title', 'title', 'job role'],
+      employment_type: ['employment_type', 'employment type', 'type', 'emp type', 'employee type'],
+      hire_date: ['hire_date', 'hire date', 'hiredate', 'start date', 'date hired', 'date of hire'],
+      home_state: ['home_state', 'home state', 'state', 'license state'],
+      notes: ['notes', 'note', 'comments', 'comment', 'remarks']
     };
 
     // Helper to find matching column in row
     const findColumn = (row, possibleNames) => {
+      const keys = Object.keys(row);
+      // First: exact match (case-insensitive, trimmed)
       for (const name of possibleNames) {
-        const key = Object.keys(row).find(k => k.toLowerCase().trim() === name);
+        const key = keys.find(k => k.toLowerCase().trim() === name);
+        if (key !== undefined) return row[key];
+      }
+      // Second: contains match for longer aliases (4+ chars) to avoid false positives
+      for (const name of possibleNames) {
+        if (name.length < 4) continue;
+        const key = keys.find(k => k.toLowerCase().trim().includes(name));
         if (key !== undefined) return row[key];
       }
       return '';
@@ -264,6 +292,33 @@ router.post('/import/preview', requireCoordinator, excelUpload.single('file'), a
         errors: [],
         warnings: []
       };
+
+      // If first_name and last_name are both empty, try combined name column
+      if (!staff.first_name && !staff.last_name) {
+        const fullName = String(findColumn(row, columnMappings.full_name)).trim();
+        if (fullName) {
+          const nameParts = fullName.split(/[\s,]+/).filter(Boolean);
+          if (nameParts.length >= 2) {
+            if (fullName.includes(',')) {
+              // "Last, First" format
+              staff.last_name = nameParts[0];
+              staff.first_name = nameParts.slice(1).join(' ');
+            } else {
+              // "First Last" format
+              staff.first_name = nameParts[0];
+              staff.last_name = nameParts.slice(1).join(' ');
+            }
+          } else if (nameParts.length === 1) {
+            staff.first_name = nameParts[0];
+            staff.warnings.push('Only one name provided; last name left empty');
+          }
+        }
+      }
+
+      // Auto-generate employee_id if not provided
+      if (!staff.employee_id) {
+        staff.warnings.push('No employee ID found; will be auto-generated on import');
+      }
 
       // Validate required fields
       if (!staff.first_name) staff.errors.push('First name is required');
@@ -377,6 +432,15 @@ router.post('/import/confirm', requireCoordinator, async (req, res) => {
 
         const hireDateValue = member.hire_date || null;
 
+        // Auto-generate employee_id if not provided
+        let employeeId = member.employee_id;
+        if (!employeeId) {
+          const initials = ((member.first_name || '').charAt(0) + (member.last_name || '').charAt(0)).toUpperCase();
+          const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
+          const random = Math.random().toString(36).slice(2, 5).toUpperCase();
+          employeeId = `${initials}${timestamp}${random}`;
+        }
+
         const { rows } = await pool.query(
           `INSERT INTO staff_members
            (employee_id, first_name, last_name, email, phone, role, employment_type,
@@ -384,7 +448,7 @@ router.post('/import/confirm', requireCoordinator, async (req, res) => {
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            RETURNING id`,
           [
-            member.employee_id || null,
+            employeeId,
             member.first_name,
             member.last_name,
             member.email || null,

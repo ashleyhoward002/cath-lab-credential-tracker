@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { dashboardAPI } from '../utils/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const tableRef = useRef(null);
   const [stats, setStats] = useState(null);
   const [upcomingExpirations, setUpcomingExpirations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +72,7 @@ export default function Dashboard() {
         </div>
 
         <div
-          onClick={() => { setShowExpiredOnly(true); setDaysFilter(90); }}
+          onClick={() => { setShowExpiredOnly(true); setDaysFilter(90); setTimeout(() => tableRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}
           className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 ${showExpiredOnly ? 'border-red-400 ring-2 ring-red-200' : 'border-transparent hover:border-red-300'}`}
         >
           <div className="flex items-center justify-between">
@@ -81,11 +82,11 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">🔴</div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Click to filter expired</p>
+          <p className="text-xs text-gray-400 mt-2">Click to show expired below</p>
         </div>
 
         <div
-          onClick={() => { setShowExpiredOnly(false); setDaysFilter(30); }}
+          onClick={() => { setShowExpiredOnly(false); setDaysFilter(30); setTimeout(() => tableRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}
           className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 ${!showExpiredOnly && daysFilter === 30 ? 'border-amber-400 ring-2 ring-amber-200' : 'border-transparent hover:border-amber-300'}`}
         >
           <div className="flex items-center justify-between">
@@ -95,11 +96,11 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">🟡</div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Click to filter</p>
+          <p className="text-xs text-gray-400 mt-2">Click to show expiring below</p>
         </div>
 
         <div
-          onClick={() => { setShowExpiredOnly(false); setDaysFilter(90); }}
+          onClick={() => { setShowExpiredOnly(false); setDaysFilter(90); setTimeout(() => tableRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}
           className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg hover:scale-[1.02] transition-all border-2 ${!showExpiredOnly && daysFilter === 90 ? 'border-blue-400 ring-2 ring-blue-200' : 'border-transparent hover:border-blue-300'}`}
         >
           <div className="flex items-center justify-between">
@@ -109,12 +110,12 @@ export default function Dashboard() {
             </div>
             <div className="text-4xl">📅</div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Click to filter</p>
+          <p className="text-xs text-gray-400 mt-2">Click to show expiring below</p>
         </div>
       </div>
 
       {/* Upcoming Expirations */}
-      <div className="bg-white rounded-lg shadow">
+      <div ref={tableRef} className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">
             {showExpiredOnly ? 'Expired Credentials' : 'Upcoming Expirations'}
