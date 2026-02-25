@@ -55,8 +55,25 @@ typesRouter.post('/', requireCoordinator, async (req, res) => {
 
 typesRouter.put('/:id', requireCoordinator, async (req, res) => {
   try {
-    const updates = req.body;
+    // Only allow specific fields to be updated
+    const allowedFields = [
+      'name', 'category', 'issuing_body', 'renewal_period_months', 'ceu_requirement',
+      'required_for', 'is_required', 'alert_days', 'verification_required', 'allow_multiple',
+      'instructions', 'description'
+    ];
+
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
     const keys = Object.keys(updates);
+    if (keys.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     const values = [...Object.values(updates), req.params.id];
 
@@ -124,8 +141,29 @@ credentialsRouter.post('/staff/:staffId', requireManager, async (req, res) => {
 // Update credential: PUT /api/staff-credentials/:id
 credentialsRouter.put('/:id', requireManager, async (req, res) => {
   try {
-    const updates = req.body;
+    // Only allow specific fields to be updated
+    const allowedFields = [
+      'issue_date', 'expiration_date', 'status', 'notes',
+      'verified_by', 'verified_date', 'superseded'
+    ];
+
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    // Convert empty date strings to null for PostgreSQL
+    ['issue_date', 'expiration_date', 'verified_date'].forEach(field => {
+      if (updates[field] === '') updates[field] = null;
+    });
+
     const keys = Object.keys(updates);
+    if (keys.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     const values = [...Object.values(updates), req.params.id];
 
