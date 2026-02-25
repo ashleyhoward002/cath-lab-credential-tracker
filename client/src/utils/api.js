@@ -136,4 +136,24 @@ export const importAPI = {
     api.post('/import/confirm', { staff }),
 };
 
+// Contacts API (all authenticated users)
+export const contactsAPI = {
+  // Categories
+  getCategories: () => api.get('/contacts/categories'),
+  createCategory: (data) => api.post('/contacts/categories', data),
+  updateCategory: (id, data) => api.put(`/contacts/categories/${id}`, data),
+  deleteCategory: (id) => api.delete(`/contacts/categories/${id}`),
+
+  // Contacts
+  getAll: (params) => api.get('/contacts', { params }),
+  getById: (id) => api.get(`/contacts/${id}`),
+  create: (data) => api.post('/contacts', data),
+  update: (id, data) => api.put(`/contacts/${id}`, data),
+  delete: (id) => api.delete(`/contacts/${id}`),
+  toggleFavorite: (id) => api.put(`/contacts/${id}/favorite`),
+  uploadCard: (formData) => api.post('/contacts/upload-card', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+};
+
 export default api;

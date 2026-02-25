@@ -16,6 +16,7 @@ import UserManagement from './pages/UserManagement';
 import MyCredentials from './pages/MyCredentials';
 import ChangePassword from './pages/ChangePassword';
 import Help from './pages/Help';
+import Contacts from './pages/Contacts';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -117,6 +118,11 @@ function AppRoutes() {
       <Route path="/users" element={
         <ProtectedRoute allowedRoles={['coordinator']}>
           <UserManagement />
+        </ProtectedRoute>
+      } />
+      <Route path="/contacts" element={
+        <ProtectedRoute>
+          <Contacts />
         </ProtectedRoute>
       } />
       <Route path="/my-credentials" element={

@@ -149,6 +149,44 @@ async function initializeDatabase() {
       )
     `);
 
+    // Contact Directory tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contact_categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE NOT NULL,
+        color TEXT DEFAULT '#3b82f6',
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        title TEXT,
+        company TEXT,
+        email TEXT,
+        phone TEXT,
+        phone_secondary TEXT,
+        category_id INTEGER REFERENCES contact_categories(id) ON DELETE SET NULL,
+        notes TEXT,
+        card_image_path TEXT,
+        is_favorite BOOLEAN DEFAULT false,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contact_tags (
+        id SERIAL PRIMARY KEY,
+        contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+        tag TEXT NOT NULL
+      )
+    `);
+
     await client.query('COMMIT');
     console.log('Database schema initialized');
   } catch (err) {

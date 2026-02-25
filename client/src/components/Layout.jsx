@@ -21,6 +21,7 @@ export default function Layout({ children }) {
     { name: 'Reports', path: '/reports', icon: '📈', roles: ['coordinator', 'manager'] },
     { name: 'Credential Types', path: '/credential-types', icon: '📋', roles: ['coordinator'] },
     { name: 'Users', path: '/users', icon: '🔑', roles: ['coordinator'] },
+    { name: 'Contacts', path: '/contacts', icon: '📇', roles: ['coordinator', 'manager', 'staff'] },
     { name: 'Help', path: '/help', icon: '❓', roles: ['coordinator', 'manager', 'staff'] },
   ];
 
