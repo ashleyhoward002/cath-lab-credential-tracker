@@ -1,10 +1,17 @@
 import { useState, useRef } from 'react';
 import { contactsAPI } from '../utils/api';
 
-export default function AddContactModal({ categories, onClose, onSaved }) {
+export default function AddContactModal({ categories: initialCategories, onClose, onSaved }) {
   const [step, setStep] = useState('choose'); // 'choose', 'manual', 'scan', 'review'
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Local categories state (so we can add new ones without closing modal)
+  const [categories, setCategories] = useState(initialCategories);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] = useState('#3b82f6');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -398,19 +405,95 @@ export default function AddContactModal({ categories, onClose, onSaved }) {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Category
           </label>
-          <select
-            name="category_id"
-            value={formData.category_id}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">No Category</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <select
+              name="category_id"
+              value={formData.category_id}
+              onChange={(e) => {
+                if (e.target.value === '__new__') {
+                  setShowNewCategory(true);
+                } else {
+                  handleChange(e);
+                }
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">No Category</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+              <option value="__new__">+ Add New Category...</option>
+            </select>
+          </div>
+
+          {/* Inline Add Category Form */}
+          {showNewCategory && (
+            <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Category name"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  autoFocus
+                />
+                <div className="flex gap-1">
+                  {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewCategoryColor(color)}
+                      className={`w-6 h-6 rounded-full border-2 ${
+                        newCategoryColor === color ? 'border-gray-800' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewCategory(false);
+                    setNewCategoryName('');
+                  }}
+                  className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newCategoryName.trim()) return;
+                    setCreatingCategory(true);
+                    try {
+                      const res = await contactsAPI.createCategory({
+                        name: newCategoryName.trim(),
+                        color: newCategoryColor,
+                      });
+                      const newCat = { id: res.data.id, name: newCategoryName.trim(), color: newCategoryColor };
+                      setCategories([...categories, newCat]);
+                      setFormData((prev) => ({ ...prev, category_id: res.data.id }));
+                      setShowNewCategory(false);
+                      setNewCategoryName('');
+                    } catch (err) {
+                      setError(err.response?.data?.error || 'Failed to create category');
+                    } finally {
+                      setCreatingCategory(false);
+                    }
+                  }}
+                  disabled={creatingCategory || !newCategoryName.trim()}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {creatingCategory ? 'Adding...' : 'Add'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="col-span-2">

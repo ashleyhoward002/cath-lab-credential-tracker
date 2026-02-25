@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { contactsAPI } from '../utils/api';
 
-export default function ContactDetailModal({ contact, categories, onClose, onUpdated, onDeleted }) {
+export default function ContactDetailModal({ contact, categories: initialCategories, onClose, onUpdated, onDeleted }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
   const [showCardImage, setShowCardImage] = useState(false);
+
+  // Local categories state for inline adding
+  const [categories, setCategories] = useState(initialCategories);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] = useState('#3b82f6');
+  const [creatingCategory, setCreatingCategory] = useState(false);
 
   const [formData, setFormData] = useState({
     name: contact.name || '',
@@ -210,14 +217,81 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
                   <select
                     name="category_id"
                     value={formData.category_id}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') {
+                        setShowNewCategory(true);
+                      } else {
+                        handleChange(e);
+                      }
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">No Category</option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
+                    <option value="__new__">+ Add New Category...</option>
                   </select>
+
+                  {showNewCategory && (
+                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          placeholder="Category name"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                          autoFocus
+                        />
+                        <div className="flex gap-1">
+                          {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setNewCategoryColor(color)}
+                              className={`w-6 h-6 rounded-full border-2 ${
+                                newCategoryColor === color ? 'border-gray-800' : 'border-transparent'
+                              }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}
+                          className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!newCategoryName.trim()) return;
+                            setCreatingCategory(true);
+                            try {
+                              const res = await contactsAPI.createCategory({ name: newCategoryName.trim(), color: newCategoryColor });
+                              const newCat = { id: res.data.id, name: newCategoryName.trim(), color: newCategoryColor };
+                              setCategories([...categories, newCat]);
+                              setFormData((prev) => ({ ...prev, category_id: res.data.id }));
+                              setShowNewCategory(false);
+                              setNewCategoryName('');
+                            } catch (err) {
+                              setError(err.response?.data?.error || 'Failed to create category');
+                            } finally {
+                              setCreatingCategory(false);
+                            }
+                          }}
+                          disabled={creatingCategory || !newCategoryName.trim()}
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {creatingCategory ? 'Adding...' : 'Add'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="col-span-2">
