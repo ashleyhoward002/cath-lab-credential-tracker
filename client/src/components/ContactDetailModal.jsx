@@ -16,6 +16,7 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
     email: contact.email || '',
     phone: contact.phone || '',
     phone_secondary: contact.phone_secondary || '',
+    website: contact.website || '',
     category_id: contact.category_id || '',
     notes: contact.notes || '',
   });
@@ -28,6 +29,7 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
       email: contact.email || '',
       phone: contact.phone || '',
       phone_secondary: contact.phone_secondary || '',
+      website: contact.website || '',
       category_id: contact.category_id || '',
       notes: contact.notes || '',
     });
@@ -192,6 +194,18 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
                 </div>
 
                 <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                  <input
+                    type="url"
+                    name="website"
+                    value={formData.website}
+                    onChange={handleChange}
+                    placeholder="https://example.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <select
                     name="category_id"
@@ -275,6 +289,17 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
                     Email
                   </a>
                 )}
+                {contact.website && (
+                  <a
+                    href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition col-span-2"
+                  >
+                    <span className="mr-2">🌐</span>
+                    Website
+                  </a>
+                )}
               </div>
 
               {/* Details */}
@@ -295,6 +320,19 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
                   <div className="flex justify-between">
                     <span className="text-gray-500">Email:</span>
                     <span className="font-medium">{contact.email}</span>
+                  </div>
+                )}
+                {contact.website && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Website:</span>
+                    <a
+                      href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      {contact.website}
+                    </a>
                   </div>
                 )}
               </div>
@@ -323,6 +361,16 @@ export default function ContactDetailModal({ contact, categories, onClose, onUpd
                       className="mt-3 rounded-lg shadow max-w-full"
                     />
                   )}
+                </div>
+              )}
+
+              {/* Raw Card Text */}
+              {contact.card_raw_text && (
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="text-sm text-gray-500 mb-1">Scanned Card Text:</div>
+                  <pre className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap max-h-32 overflow-y-auto">
+                    {contact.card_raw_text}
+                  </pre>
                 </div>
               )}
 

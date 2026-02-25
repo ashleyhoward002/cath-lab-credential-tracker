@@ -201,7 +201,7 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const allowedFields = [
       'name', 'title', 'company', 'email', 'phone', 'phone_secondary',
-      'category_id', 'notes', 'card_image_path', 'is_favorite'
+      'website', 'category_id', 'notes', 'card_image_path', 'card_raw_text', 'is_favorite'
     ];
 
     const data = {};
@@ -222,12 +222,13 @@ router.post('/', requireAuth, async (req, res) => {
 
     const { rows } = await pool.query(
       `INSERT INTO contacts (name, title, company, email, phone, phone_secondary,
-                             category_id, notes, card_image_path, is_favorite, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+                             website, category_id, notes, card_image_path, card_raw_text, is_favorite, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
       [
         data.name, data.title || null, data.company || null,
         data.email || null, data.phone || null, data.phone_secondary || null,
-        data.category_id || null, data.notes || null, data.card_image_path || null,
+        data.website || null, data.category_id || null, data.notes || null,
+        data.card_image_path || null, data.card_raw_text || null,
         data.is_favorite || false, req.session.userId
       ]
     );
@@ -256,7 +257,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   try {
     const allowedFields = [
       'name', 'title', 'company', 'email', 'phone', 'phone_secondary',
-      'category_id', 'notes', 'card_image_path', 'is_favorite'
+      'website', 'category_id', 'notes', 'card_image_path', 'card_raw_text', 'is_favorite'
     ];
 
     const updates = {};

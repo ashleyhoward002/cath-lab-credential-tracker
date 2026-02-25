@@ -253,6 +253,18 @@ export default function Contacts() {
                     <span className="truncate">{contact.email}</span>
                   </a>
                 )}
+                {contact.website && (
+                  <a
+                    href={contact.website.startsWith('http') ? contact.website : `https://${contact.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center text-blue-600 hover:text-blue-800 truncate"
+                  >
+                    <span className="mr-2">🌐</span>
+                    <span className="truncate">{contact.website.replace(/^https?:\/\//, '')}</span>
+                  </a>
+                )}
               </div>
             </div>
           ))}

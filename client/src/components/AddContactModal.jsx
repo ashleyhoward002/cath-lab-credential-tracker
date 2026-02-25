@@ -14,9 +14,11 @@ export default function AddContactModal({ categories, onClose, onSaved }) {
     email: '',
     phone: '',
     phone_secondary: '',
+    website: '',
     category_id: '',
     notes: '',
     card_image_path: '',
+    card_raw_text: '',
   });
 
   // OCR state
@@ -73,6 +75,8 @@ export default function AddContactModal({ categories, onClose, onSaved }) {
         phone: parsed.phone || prev.phone,
         company: parsed.company || prev.company,
         title: parsed.title || prev.title,
+        website: parsed.website || prev.website,
+        card_raw_text: text,
       }));
 
       // Upload the card image
@@ -92,11 +96,17 @@ export default function AddContactModal({ categories, onClose, onSaved }) {
 
   const parseBusinessCardText = (text) => {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    const result = { name: '', title: '', company: '', email: '', phone: '' };
+    const result = { name: '', title: '', company: '', email: '', phone: '', website: '' };
 
     // Email regex
     const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
     if (emailMatch) result.email = emailMatch[0].toLowerCase();
+
+    // Website regex
+    const websiteMatch = text.match(/(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\.[a-zA-Z]{2,})?)/i);
+    if (websiteMatch && !websiteMatch[0].includes('@')) {
+      result.website = websiteMatch[0].startsWith('http') ? websiteMatch[0] : `https://${websiteMatch[0]}`;
+    }
 
     // Phone regex (various formats)
     const phoneMatch = text.match(/(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
@@ -366,6 +376,20 @@ export default function AddContactModal({ categories, onClose, onSaved }) {
             name="email"
             value={formData.email}
             onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Website
+          </label>
+          <input
+            type="url"
+            name="website"
+            value={formData.website}
+            onChange={handleChange}
+            placeholder="https://example.com"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>

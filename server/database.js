@@ -169,15 +169,25 @@ async function initializeDatabase() {
         email TEXT,
         phone TEXT,
         phone_secondary TEXT,
+        website TEXT,
         category_id INTEGER REFERENCES contact_categories(id) ON DELETE SET NULL,
         notes TEXT,
         card_image_path TEXT,
+        card_raw_text TEXT,
         is_favorite BOOLEAN DEFAULT false,
         created_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
+
+    // Add new columns if they don't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE contacts ADD COLUMN IF NOT EXISTS website TEXT
+    `).catch(() => {});
+    await client.query(`
+      ALTER TABLE contacts ADD COLUMN IF NOT EXISTS card_raw_text TEXT
+    `).catch(() => {});
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS contact_tags (
