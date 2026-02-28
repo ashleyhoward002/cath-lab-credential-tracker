@@ -160,8 +160,22 @@ credentialsRouter.post('/staff/:staffId', requireManager, async (req, res) => {
 });
 
 // Update credential: PUT /api/staff-credentials/:id
-credentialsRouter.put('/:id', requireManager, async (req, res) => {
+// Staff can edit their own credentials, managers/coordinators can edit anyone's
+credentialsRouter.put('/:id', requireAuth, async (req, res) => {
   try {
+    // Check ownership for staff role
+    const credential = await pool.query('SELECT * FROM staff_credentials WHERE id = $1', [req.params.id]);
+    if (credential.rows.length === 0) {
+      return res.status(404).json({ error: 'Credential not found' });
+    }
+
+    const isOwner = req.session.staffMemberId === credential.rows[0].staff_id;
+    const isManagerOrAbove = req.session.userRole === 'manager' || req.session.userRole === 'coordinator';
+
+    if (!isOwner && !isManagerOrAbove) {
+      return res.status(403).json({ error: 'You can only edit your own credentials' });
+    }
+
     // Only allow specific fields to be updated
     const allowedFields = [
       'issue_date', 'expiration_date', 'status', 'notes',
@@ -188,14 +202,12 @@ credentialsRouter.put('/:id', requireManager, async (req, res) => {
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     const values = [...Object.values(updates), req.params.id];
 
-    const old = await pool.query('SELECT * FROM staff_credentials WHERE id = $1', [req.params.id]);
-
     await pool.query(
       `UPDATE staff_credentials SET ${setClause}, updated_at = NOW() WHERE id = $${keys.length + 1}`,
       values
     );
 
-    logAudit(req.session.userId, 'UPDATE', 'staff_credentials', req.params.id, old.rows[0], updates);
+    logAudit(req.session.userId, 'UPDATE', 'staff_credentials', req.params.id, credential.rows[0], updates);
     res.json({ message: 'Credential updated successfully' });
   } catch (err) {
     console.error('Update credential error:', err);

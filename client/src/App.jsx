@@ -16,6 +16,7 @@ import UserManagement from './pages/UserManagement';
 import MyCredentials from './pages/MyCredentials';
 import ChangePassword from './pages/ChangePassword';
 import Help from './pages/Help';
+import ActivityLog from './pages/ActivityLog';
 import Contacts from './pages/Contacts';
 import Layout from './components/Layout';
 import InstallPrompt from './components/InstallPrompt';
@@ -139,6 +140,11 @@ function AppRoutes() {
       <Route path="/help" element={
         <ProtectedRoute>
           <Help />
+        </ProtectedRoute>
+      } />
+      <Route path="/activity" element={
+        <ProtectedRoute allowedRoles={['coordinator']}>
+          <ActivityLog />
         </ProtectedRoute>
       } />
 

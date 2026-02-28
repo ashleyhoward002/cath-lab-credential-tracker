@@ -160,4 +160,10 @@ export const contactsAPI = {
   }),
 };
 
+// Audit Log API (coordinator only)
+export const auditAPI = {
+  getLog: (params) => api.get('/audit', { params }),
+  getStats: () => api.get('/audit/stats'),
+};
+
 export default api;

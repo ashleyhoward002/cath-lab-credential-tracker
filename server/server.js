@@ -69,6 +69,7 @@ app.use('/api/documents', require('./routes/documents'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/import', require('./routes/import'));
 app.use('/api/contacts', require('./routes/contacts'));
+app.use('/api/audit', require('./routes/audit'));
 
 // Backward-compatible alias: some frontend code uses /api/documents/upload
 // The documents router is mounted at /api/documents
