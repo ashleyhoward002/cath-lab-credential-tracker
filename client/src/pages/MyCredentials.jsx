@@ -79,12 +79,16 @@ export default function MyCredentials() {
     setUpdating(true);
     setError('');
 
+    console.log('Updating credential:', editingCredential.id, 'with data:', editForm);
+
     try {
-      await staffCredentialAPI.update(editingCredential.id, editForm);
+      const response = await staffCredentialAPI.update(editingCredential.id, editForm);
+      console.log('Update response:', response);
       await loadData();
       setShowEditModal(false);
       setEditingCredential(null);
     } catch (err) {
+      console.error('Update failed:', err.response?.status, err.response?.data, err.message);
       setError(err.response?.data?.error || 'Failed to update credential');
     } finally {
       setUpdating(false);

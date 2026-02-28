@@ -55,6 +55,8 @@ typesRouter.post('/', requireCoordinator, async (req, res) => {
 
 typesRouter.put('/:id', requireCoordinator, async (req, res) => {
   try {
+    console.log('Update credential type request:', { id: req.params.id, body: req.body });
+
     // Only allow specific fields to be updated
     const allowedFields = [
       'name', 'category', 'issuing_body', 'renewal_period_months', 'ceu_requirement',
@@ -69,7 +71,18 @@ typesRouter.put('/:id', requireCoordinator, async (req, res) => {
       }
     });
 
+    // Convert empty strings to null for numeric fields
+    ['renewal_period_months', 'ceu_requirement', 'alert_days'].forEach(field => {
+      if (updates[field] === '' || updates[field] === null) {
+        updates[field] = null;
+      } else if (updates[field] !== undefined) {
+        // Ensure numeric fields are numbers
+        updates[field] = parseInt(updates[field], 10) || null;
+      }
+    });
+
     const keys = Object.keys(updates);
+    console.log('Updates to apply:', { keys, updates });
     if (keys.length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
@@ -79,11 +92,13 @@ typesRouter.put('/:id', requireCoordinator, async (req, res) => {
 
     const old = await pool.query('SELECT * FROM credential_types WHERE id = $1', [req.params.id]);
 
+    console.log('Executing update:', { setClause, values });
     await pool.query(
       `UPDATE credential_types SET ${setClause}, updated_at = NOW() WHERE id = $${keys.length + 1}`,
       values
     );
 
+    console.log('Credential type updated successfully:', req.params.id);
     logAudit(req.session.userId, 'UPDATE', 'credential_types', req.params.id, old.rows[0], updates);
     res.json({ message: 'Credential type updated successfully' });
   } catch (err) {
@@ -163,16 +178,29 @@ credentialsRouter.post('/staff/:staffId', requireManager, async (req, res) => {
 // Staff can edit their own credentials, managers/coordinators can edit anyone's
 credentialsRouter.put('/:id', requireAuth, async (req, res) => {
   try {
+    console.log('Update credential request:', {
+      credentialId: req.params.id,
+      body: req.body,
+      userRole: req.session.userRole,
+      staffMemberId: req.session.staffMemberId,
+      userId: req.session.userId
+    });
+
     // Check ownership for staff role
     const credential = await pool.query('SELECT * FROM staff_credentials WHERE id = $1', [req.params.id]);
     if (credential.rows.length === 0) {
+      console.log('Credential not found:', req.params.id);
       return res.status(404).json({ error: 'Credential not found' });
     }
 
-    const isOwner = req.session.staffMemberId === credential.rows[0].staff_id;
-    const isManagerOrAbove = req.session.userRole === 'manager' || req.session.userRole === 'coordinator';
+    const userRole = (req.session.userRole || '').toLowerCase();
+    const isOwner = req.session.staffMemberId && req.session.staffMemberId === credential.rows[0].staff_id;
+    const isManagerOrAbove = userRole === 'manager' || userRole === 'coordinator';
+
+    console.log('Permission check:', { userRole, isOwner, isManagerOrAbove, credentialStaffId: credential.rows[0].staff_id });
 
     if (!isOwner && !isManagerOrAbove) {
+      console.log('Permission denied for credential update');
       return res.status(403).json({ error: 'You can only edit your own credentials' });
     }
 
@@ -195,18 +223,22 @@ credentialsRouter.put('/:id', requireAuth, async (req, res) => {
     });
 
     const keys = Object.keys(updates);
+    console.log('Updates to apply:', { keys, updates });
     if (keys.length === 0) {
+      console.log('No valid fields to update, allowedFields:', allowedFields, 'body:', req.body);
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
     const values = [...Object.values(updates), req.params.id];
 
+    console.log('Executing update:', { setClause, values });
     await pool.query(
       `UPDATE staff_credentials SET ${setClause}, updated_at = NOW() WHERE id = $${keys.length + 1}`,
       values
     );
 
+    console.log('Credential updated successfully:', req.params.id);
     logAudit(req.session.userId, 'UPDATE', 'staff_credentials', req.params.id, credential.rows[0], updates);
     res.json({ message: 'Credential updated successfully' });
   } catch (err) {

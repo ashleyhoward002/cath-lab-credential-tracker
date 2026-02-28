@@ -108,12 +108,16 @@ export default function CredentialTypes() {
     setError('');
     setUpdating(true);
 
+    console.log('Updating credential type:', editingCredential.id, 'with data:', editForm);
+
     try {
-      await credentialTypeAPI.update(editingCredential.id, editForm);
+      const response = await credentialTypeAPI.update(editingCredential.id, editForm);
+      console.log('Update response:', response);
       await loadCredentialTypes();
       setShowEditModal(false);
       setEditingCredential(null);
     } catch (err) {
+      console.error('Update failed:', err.response?.status, err.response?.data, err.message);
       setError(err.response?.data?.error || 'Failed to update credential type');
     } finally {
       setUpdating(false);

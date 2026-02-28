@@ -113,8 +113,8 @@ export default function StaffDetail() {
   const openEditModal = (credential) => {
     setEditingCredential(credential);
     setEditForm({
-      issue_date: credential.issue_date || '',
-      expiration_date: credential.expiration_date || '',
+      issue_date: credential.issue_date ? credential.issue_date.split('T')[0] : '',
+      expiration_date: credential.expiration_date ? credential.expiration_date.split('T')[0] : '',
       status: credential.status || 'Active',
       notes: credential.notes || ''
     });
@@ -146,12 +146,16 @@ export default function StaffDetail() {
     setError('');
     setUpdatingCredential(true);
 
+    console.log('Updating credential:', editingCredential.id, 'with data:', editForm);
+
     try {
-      await staffCredentialAPI.update(editingCredential.id, editForm);
+      const response = await staffCredentialAPI.update(editingCredential.id, editForm);
+      console.log('Update response:', response);
       await loadStaffData(); // Reload to show updated credential
       setShowEditModal(false);
       setEditingCredential(null);
     } catch (err) {
+      console.error('Update failed:', err.response?.status, err.response?.data, err.message);
       setError(err.response?.data?.error || 'Failed to update credential');
     } finally {
       setUpdatingCredential(false);
