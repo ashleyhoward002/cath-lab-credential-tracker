@@ -38,6 +38,10 @@ export default function StaffDetail() {
     notes: ''
   });
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingCredential, setDeletingCredential] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     loadStaffData();
     loadCredentialTypes();
@@ -115,6 +119,26 @@ export default function StaffDetail() {
       notes: credential.notes || ''
     });
     setShowEditModal(true);
+  };
+
+  const confirmDelete = (credential) => {
+    setDeletingCredential(credential);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteCredential = async () => {
+    setDeleting(true);
+    try {
+      await staffCredentialAPI.delete(deletingCredential.id);
+      await loadStaffData();
+      setShowDeleteConfirm(false);
+      setDeletingCredential(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete credential');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleUpdateCredential = async (e) => {
@@ -377,12 +401,20 @@ export default function StaffDetail() {
                                   {instance.status}
                                 </span>
                                 {canEditStaff && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); openEditModal(instance); }}
-                                    className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-                                  >
-                                    Edit
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); openEditModal(instance); }}
+                                      className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); confirmDelete(instance); }}
+                                      className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -677,6 +709,43 @@ export default function StaffDetail() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Credential Confirmation Modal */}
+      {showDeleteConfirm && deletingCredential && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Delete Credential</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this <strong>{deletingCredential.credential_name}</strong> record?
+              This will also remove any attached documents. This action cannot be undone.
+            </p>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletingCredential(null);
+                  setError('');
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCredential}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -92,6 +92,27 @@ typesRouter.put('/:id', requireCoordinator, async (req, res) => {
   }
 });
 
+typesRouter.delete('/:id', requireCoordinator, async (req, res) => {
+  try {
+    const old = await pool.query('SELECT * FROM credential_types WHERE id = $1', [req.params.id]);
+    if (old.rows.length === 0) {
+      return res.status(404).json({ error: 'Credential type not found' });
+    }
+
+    // Delete associated staff credentials first
+    await pool.query('DELETE FROM staff_credentials WHERE credential_type_id = $1', [req.params.id]);
+
+    // Delete the credential type
+    await pool.query('DELETE FROM credential_types WHERE id = $1', [req.params.id]);
+
+    logAudit(req.session.userId, 'DELETE', 'credential_types', req.params.id, old.rows[0], null);
+    res.json({ message: 'Credential type deleted successfully' });
+  } catch (err) {
+    console.error('Delete credential type error:', err);
+    res.status(500).json({ error: 'Failed to delete credential type' });
+  }
+});
+
 // ===== STAFF CREDENTIALS ROUTER (mounted at /api/staff-credentials) =====
 const credentialsRouter = express.Router();
 
@@ -179,6 +200,28 @@ credentialsRouter.put('/:id', requireManager, async (req, res) => {
   } catch (err) {
     console.error('Update credential error:', err);
     res.status(500).json({ error: 'Failed to update credential' });
+  }
+});
+
+// Delete credential: DELETE /api/staff-credentials/:id
+credentialsRouter.delete('/:id', requireManager, async (req, res) => {
+  try {
+    const old = await pool.query('SELECT * FROM staff_credentials WHERE id = $1', [req.params.id]);
+    if (old.rows.length === 0) {
+      return res.status(404).json({ error: 'Credential not found' });
+    }
+
+    // Delete associated documents first
+    await pool.query('DELETE FROM documents WHERE staff_credential_id = $1', [req.params.id]);
+
+    // Delete the credential
+    await pool.query('DELETE FROM staff_credentials WHERE id = $1', [req.params.id]);
+
+    logAudit(req.session.userId, 'DELETE', 'staff_credentials', req.params.id, old.rows[0], null);
+    res.json({ message: 'Credential deleted successfully' });
+  } catch (err) {
+    console.error('Delete credential error:', err);
+    res.status(500).json({ error: 'Failed to delete credential' });
   }
 });
 

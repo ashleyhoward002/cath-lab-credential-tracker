@@ -71,6 +71,8 @@ export const credentialTypeAPI = {
     api.post('/credential-types', credentialData),
   update: (id, credentialData) =>
     api.put(`/credential-types/${id}`, credentialData),
+  delete: (id) =>
+    api.delete(`/credential-types/${id}`),
 };
 
 // Staff Credentials API
@@ -81,6 +83,8 @@ export const staffCredentialAPI = {
     api.post(`/staff/${staffId}/credentials`, credentialData),
   update: (credentialId, credentialData) =>
     api.put(`/staff-credentials/${credentialId}`, credentialData),
+  delete: (credentialId) =>
+    api.delete(`/staff-credentials/${credentialId}`),
   getDocuments: (credentialId) =>
     api.get(`/staff-credentials/${credentialId}/documents`),
 };
