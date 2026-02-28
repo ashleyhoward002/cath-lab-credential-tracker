@@ -18,6 +18,7 @@ import ChangePassword from './pages/ChangePassword';
 import Help from './pages/Help';
 import Contacts from './pages/Contacts';
 import Layout from './components/Layout';
+import InstallPrompt from './components/InstallPrompt';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -152,6 +153,7 @@ function App() {
       <ConfigProvider>
         <AuthProvider>
           <AppRoutes />
+          <InstallPrompt />
         </AuthProvider>
       </ConfigProvider>
     </Router>

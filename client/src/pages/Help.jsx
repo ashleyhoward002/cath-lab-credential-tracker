@@ -373,6 +373,52 @@ export default function Help() {
           </div>
         </Section>
 
+        {/* Install App */}
+        <Section id="install" title="Install App to Desktop" icon="💻">
+          <div className="mt-4 space-y-4">
+            <p className="text-gray-700">
+              You can install this app to your desktop or phone for quick access — it works like a native application!
+            </p>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-900 mb-2">On Desktop (Chrome/Edge)</h4>
+              <ol className="text-blue-800 text-sm list-decimal list-inside space-y-2">
+                <li>Look for the install icon <span className="inline-block px-2 py-0.5 bg-white rounded text-xs border">⊕</span> in the address bar (right side)</li>
+                <li>Click it and select <strong>"Install"</strong></li>
+                <li>The app will appear in your Start Menu and can be pinned to the taskbar</li>
+              </ol>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-semibold text-blue-900 mb-2">Alternative Method (Chrome/Edge)</h4>
+              <ol className="text-blue-800 text-sm list-decimal list-inside space-y-2">
+                <li>Click the three-dot menu <strong>⋮</strong> in the top right corner</li>
+                <li>Look for <strong>"Install Cath Lab Credential Tracker"</strong> or <strong>"Apps" → "Install this site as an app"</strong></li>
+                <li>Click <strong>Install</strong></li>
+              </ol>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h4 className="font-semibold text-green-900 mb-2">On iPhone/iPad (Safari)</h4>
+              <ol className="text-green-800 text-sm list-decimal list-inside space-y-2">
+                <li>Open this site in <strong>Safari</strong> (not Chrome)</li>
+                <li>Tap the <strong>Share</strong> button <span className="inline-block px-2 py-0.5 bg-white rounded text-xs border">↑</span> at the bottom</li>
+                <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                <li>Tap <strong>Add</strong> in the top right</li>
+              </ol>
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h4 className="font-semibold text-purple-900 mb-2">On Android (Chrome)</h4>
+              <ol className="text-purple-800 text-sm list-decimal list-inside space-y-2">
+                <li>Tap the three-dot menu <strong>⋮</strong> in the top right</li>
+                <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></li>
+                <li>Tap <strong>Install</strong></li>
+              </ol>
+            </div>
+          </div>
+        </Section>
+
         {/* Need More Help */}
         <div className="bg-gray-100 rounded-lg p-6 text-center">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Need More Help?</h3>
