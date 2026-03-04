@@ -1,4 +1,4 @@
-# Dependencies
+claude# Dependencies
 node_modules/
 
 # Database (will be created fresh on deploy)
