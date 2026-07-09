@@ -14,140 +14,106 @@ This application replaces paper-based credential tracking with digital managemen
 
 ### Installation & Running
 
-1. **Navigate to the project directory:**
+1. Clone the repository and navigate into it:
    ```bash
-   cd "c:\VS Code\cath-lab-credential-tracker"
+   git clone https://github.com/ashleyhoward002/cath-lab-credential-tracker.git
+   cd cath-lab-credential-tracker
    ```
 
-2. **Start the Backend Server:**
+2. Start the Backend Server:
    ```bash
    cd server
+   npm install
    npm run dev
    ```
    Backend will run on `http://localhost:3001`
 
-3. **Start the Frontend (in a new terminal):**
+3. Start the Frontend (in a new terminal):
    ```bash
    cd client
+   npm install
    npm run dev
    ```
    Frontend will run on `http://localhost:5173`
 
-4. **Access the Application:**
-   Open your browser and go to `http://localhost:5173`
+4. Access the Application: Open your browser and go to `http://localhost:5173`
 
-### Default Login Credentials
+### Setting Up Local Accounts
 
-- **Coordinator (Full Access):**
-  - Username: `coordinator`
-  - Password: `demo123`
-
-- **Manager (Read-Only):**
-  - Username: `manager`
-  - Password: `demo123`
+This is a local demo/proof-of-concept, so it does not ship with any preconfigured usernames or passwords. Run the seed script (`server/seedData.js`) to create your own local Coordinator (full access) and Manager (read-only) accounts before logging in.
 
 ## 📁 Project Structure
 
 ```
 cath-lab-credential-tracker/
-├── client/              # React frontend
+├── client/          # React frontend
 │   ├── src/
 │   │   ├── components/  # Reusable components
 │   │   ├── context/     # React context (auth)
 │   │   ├── pages/       # Page components
 │   │   └── utils/       # API utilities
 │   └── package.json
-├── server/              # Node.js/Express backend
+├── server/          # Node.js/Express backend
 │   ├── server.js        # Main server file
 │   ├── database.js      # SQLite schema
 │   ├── seedData.js      # Pre-configured credential types
 │   └── package.json
-├── database/            # SQLite database file
-├── uploads/             # Uploaded documents
-└── docs/                # Specification documents
+├── database/        # SQLite database file
+├── uploads/         # Uploaded documents
+└── docs/            # Specification documents
 ```
 
 ## ✨ Features Implemented
 
 ### Phase 1 (Current - MVP)
 
-✅ **Authentication System**
+**Authentication System**
 - Secure login with session management
 - Role-based access control (Coordinator vs Manager)
 - Password hashing with bcrypt
 
-✅ **Staff Management**
+**Staff Management**
 - Add, view, edit, and archive staff members
 - Support for permanent, traveler, PRN, and float staff
 - Employee information tracking (ID, role, contact info, etc.)
 - Traveler contract date tracking
 
-✅ **Credential Type Configuration**
+**Credential Type Configuration**
 - Pre-configured credential types (RCIS, ACLS, BLS, etc.)
 - Fully editable credential types
-- Support for:
-  - Licenses (RN, RT, etc.)
-  - Certifications (ACLS, BLS, RCIS, RCES, etc.)
-  - Competencies (Radiation Safety, Sheath Removal, etc.)
-  - Annual requirements (HIPAA, Fire Safety, etc.)
+- Support for licenses (RN, RT, etc.), certifications (ACLS, BLS, RCIS, RCES, etc.), competencies (Radiation Safety, Sheath Removal, etc.), and annual requirements (HIPAA, Fire Safety, etc.)
 - Configurable renewal periods and CEU requirements
 - Role-specific requirements (RN, Tech, RT, All, Custom)
 
-✅ **Credential Tracking**
+**Credential Tracking**
 - Assign credentials to staff members
 - Track issue and expiration dates
 - Automatic status calculation
 - Credential history (superseded records)
 
-✅ **Dashboard**
+**Dashboard**
 - Real-time compliance statistics
 - Color-coded status indicators (🟢🟡🔴)
 - Upcoming expirations view (30/60/90 day filters)
 - At-a-glance staff overview
 
-✅ **Database**
+**Database**
 - SQLite for development (easy to migrate to PostgreSQL)
 - Full audit logging
 - Data retention for compliance
 - Sample data pre-loaded for demo
 
 ### Planned Features (Phase 2+)
-
-⬜ **CEU Tracking**
-- Log continuing education hours
-- Track CEU progress toward certification renewals
-- CEU application to multiple credentials
-
-⬜ **Email Notifications**
-- Automated expiration reminders
-- Daily digest for coordinators
-- SMTP/Outlook integration
-
-⬜ **Advanced Reports**
-- Compliance summary reports
-- Individual staff reports (printable)
-- Credential type reports
-- Export to Excel/PDF
-
-⬜ **Document Management**
-- Upload verification documents
-- Document preview
-- Version history
-
-⬜ **Bulk Operations**
-- Bulk credential assignment
-- Bulk reminder sending
-- Bulk status updates
-
-⬜ **Staff Self-Service Portal**
-- Staff can view their own credentials
-- Upload their own documents
-- Update contact information
+- CEU tracking (log continuing education hours, track progress toward renewals)
+- Email notifications (automated expiration reminders, SMTP/Outlook integration)
+- Advanced reports (compliance summaries, printable staff reports, Excel/PDF export)
+- Document management (upload verification documents, previews, version history)
+- Bulk operations (bulk credential assignment, reminders, status updates)
+- Staff self-service portal
 
 ## 🗄️ Database Schema
 
 The application uses SQLite with the following main tables:
-
 - `users` - Authentication and user roles
 - `staff_members` - Staff information
 - `credential_types` - Configurable credential templates
@@ -176,32 +142,15 @@ The application uses SQLite with the following main tables:
 
 ## 📊 Pre-Configured Credential Types
 
-The system comes with 17 pre-configured credential types based on your specification:
+The system comes with 17 pre-configured credential types based on the project specification:
 
-**Licenses:**
-- RN License - Michigan
-- Compact Nursing License
-- Radiologic Technologist License
+**Licenses:** RN License (Michigan), Compact Nursing License, Radiologic Technologist License
 
-**Certifications:**
-- RCIS Certification (for Techs)
-- RCES Certification (for EP Techs)
-- ACLS (for All)
-- BLS (for All)
-- PALS (for RN)
-- NIHSS Certification
+**Certifications:** RCIS Certification (Techs), RCES Certification (EP Techs), ACLS (All), BLS (All), PALS (RN), NIHSS Certification
 
-**Competencies:**
-- Conscious Sedation (for RN)
-- Arterial/Venous Sheath Removal (for RN, Tech)
-- Hemodynamic Monitoring (for All)
-- Radiation Safety (for All)
-- Emergency Response (for All)
+**Competencies:** Conscious Sedation (RN), Arterial/Venous Sheath Removal (RN, Tech), Hemodynamic Monitoring (All), Radiation Safety (All), Emergency Response (All)
 
-**Annual Requirements:**
-- HIPAA Training (for All)
-- Fire Safety (for All)
-- Bloodborne Pathogens (for All)
+**Annual Requirements:** HIPAA Training (All), Fire Safety (All), Bloodborne Pathogens (All)
 
 All credential types are fully editable through the UI.
 
@@ -210,20 +159,16 @@ All credential types are fully editable through the UI.
 ### Running in Production
 
 This is currently configured for local development. For production deployment:
-
-1. Set `NODE_ENV=production`
-2. Configure proper session secret
-3. Enable HTTPS
-4. Migrate to PostgreSQL
-5. Configure hospital SMTP for emails
-6. Integrate with hospital SSO/Active Directory
+- Set `NODE_ENV=production`
+- Configure a proper session secret
+- Enable HTTPS
+- Migrate to PostgreSQL
+- Configure hospital SMTP for emails
+- Integrate with hospital SSO/Active Directory
 
 ### Database Location
 
-The SQLite database is stored at:
-```
-C:\VS Code\cath-lab-credential-tracker\database\credentials.db
-```
+By default, the SQLite database is stored at `database/credentials.db`, relative to the project root.
 
 ### Stopping the Servers
 
@@ -232,12 +177,12 @@ Press `Ctrl+C` in each terminal window to stop the servers.
 ## 📝 Next Steps for IT Approval
 
 This demo includes:
-- ✅ Professional, polished UI
-- ✅ Working authentication and role-based access
-- ✅ Core credential tracking functionality
-- ✅ Dashboard with visual status indicators
-- ✅ Audit logging for compliance
-- ✅ Security best practices
+- Professional, polished UI
+- Working authentication and role-based access
+- Core credential tracking functionality
+- Dashboard with visual status indicators
+- Audit logging for compliance
+- Security best practices
 
 After IT approval, we can:
 - Deploy to hospital infrastructure
@@ -249,8 +194,6 @@ After IT approval, we can:
 ## 📧 Support
 
 For questions or issues, refer to the specification documents in the `/docs` folder.
-
----
 
 **Version:** 1.0.0 (Demo/Proof-of-Concept)
 **Last Updated:** January 7, 2026
